@@ -26,10 +26,10 @@
         // Function to fetch the markdown file and render it
         async function loadReadme() {
             try {
-                // Fetch the raw content of the README.md file
-                const response = await fetch('README.md'); 
+                // Fetch the raw content of the AWS-GenAI-Tools.md file
+                const response = await fetch('AWS-GenAI-Tools.md'); 
                 if (!response.ok) {
-                    throw new Error('Could not fetch README.md');
+                    throw new Error('Could not fetch AWS-GenAI-Tools.md');
                 }
                 const markdownText = await response.text();
 

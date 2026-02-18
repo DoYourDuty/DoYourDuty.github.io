@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README Preview</title>
+    <!-- Include the Showdown.js library from a CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <!-- Optional: Add some basic styling for the rendered content -->
+    <style>
+        .markdown-body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="readme-container" class="markdown-body">
+        <!-- The rendered HTML content will appear here -->
+    </div>
+
+    <script>
+        // Function to fetch the markdown file and render it
+        async function loadReadme() {
+            try {
+                // Fetch the raw content of the README.md file
+                const response = await fetch('README.md'); 
+                if (!response.ok) {
+                    throw new Error('Could not fetch README.md');
+                }
+                const markdownText = await response.text();
+
+                // Convert markdown to HTML using Showdown.js
+                const converter = new showdown.Converter();
+                const html = converter.makeHtml(markdownText);
+
+                // Insert the generated HTML into the container div
+                document.getElementById('readme-container').innerHTML = html;
+
+            } catch (error) {
+                console.error("Error loading README:", error);
+                document.getElementById('readme-container').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        // Call the function when the page loads
+        loadReadme();
+    </script>
+</body>
+</html>

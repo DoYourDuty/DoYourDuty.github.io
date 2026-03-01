@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Record Keeper</title>
+    <style>
+        /* UI FOR OLDER USERS: Large fonts, high contrast, big buttons */
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+            background-color: #f0f0f0;
+            margin: 20px;
+            color: #000;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        h1 { text-align: center; color: #0056b3; }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 22px;
+            border: 3px solid #333;
+            border-radius: 10px;
+            box-sizing: border-box;
+        }
+
+        .clear-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            cursor: pointer;
+            color: red;
+            font-weight: bold;
+            background: none;
+            border: none;
+        }
+
+        .form-group {
+            background: #e9f5ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #b3d7ff;
+        }
+
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+
+        button {
+            padding: 15px 25px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+            border: none;
+            margin-top: 10px;
+        }
+
+        .btn-add { background-color: #28a745; color: white; width: 100%; }
+        .btn-export { background-color: #6c757d; color: white; width: 100%; margin-top: 20px; }
+        .btn-delete { background-color: #dc3545; color: white; font-size: 16px; padding: 10px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 15px; text-align: left; }
+        th { background-color: #eee; }
+
+        .total-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0056b3;
+            margin: 15px 0;
+            padding: 10px;
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+        }
+
+        .error { color: red; font-size: 18px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Record Keeper</h1>
+
+    <!-- SEARCH SECTION -->
+    <div class="search-box">
+        <label for="searchInput">Search Mobile Number:</label>
+        <input type="number" id="searchInput" placeholder="Enter at least 3 digits..." oninput="handleSearch()">
+        <button class="clear-btn" onclick="clearSearch()">X</button>
+    </div>
+
+    <!-- TOTAL FOR SEARCHED NUMBER -->
+    <div id="totalSection" style="display:none;">
+        <div class="total-display" id="totalAmount">Total Rupee: ₹0</div>
+    </div>
+
+    <!-- ADD SECTION -->
+    <div class="form-group">
+        <h3>Add New Record</h3>
+        <label>Mobile Number (10 digits):</label>
+        <input type="number" id="newPhone" placeholder="0000000000">
+        <label style="margin-top:15px;">Amount (Rupee):</label>
+        <input type="number" id="newAmount" placeholder="Enter amount">
+        <button class="btn-add" onclick="saveRecord()">ADD RECORD</button>
+        <div id="formError" class="error"></div>
+    </div>
+
+    <!-- LIST TABLE -->
+    <table id="recordTable">
+        <thead>
+            <tr>
+                <th>Phone</th>
+                <th>Amount</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+    <button class="btn-export" onclick="exportToCSV()">Export All Data to CSV</button>
+</div>
+
+<script>
+    // Initialize Database from LocalStorage
+    let db = JSON.parse(localStorage.getItem('mobileDB')) || [];
+
+    // On Load
+    window.onload = () => { renderTable(db); };
+
+    function saveRecord() {
+        const phone = document.getElementById('newPhone').value;
+        const amount = document.getElementById('newAmount').value;
+        const errorDiv = document.getElementById('formError');
+
+        if (phone.length !== 10) {
+            errorDiv.innerText = "Error: Phone number must be 10 digits.";
+            return;
+        }
+        if (!amount || amount <= 0) {
+            errorDiv.innerText = "Error: Please enter a valid amount.";
+            return;
+        }
+
+        errorDiv.innerText = "";
+        const record = { id: Date.now(), phone: phone, amount: parseFloat(amount) };
+        db.push(record);
+        localStorage.setItem('mobileDB', JSON.stringify(db));
+        
+        // Clear inputs
+        document.getElementById('newPhone').value = "";
+        document.getElementById('newAmount').value = "";
+        
+        handleSearch(); // Refresh list based on current search
+        alert("Record Added Successfully!");
+    }
+
+    function handleSearch() {
+        const query = document.getElementById('searchInput').value;
+        const totalSection = document.getElementById('totalSection');
+        
+        if (query.length >= 3) {
+            const filtered = db.filter(item => item.phone.includes(query));
+            renderTable(filtered);
+            
+            // Calculate total for this specific number (if search matches perfectly)
+            const exactMatches = db.filter(item => item.phone === query);
+            if (exactMatches.length > 0) {
+                const total = exactMatches.reduce((sum, item) => sum + item.amount, 0);
+                document.getElementById('totalAmount').innerText = "Total Rupee for " + query + ": ₹" + total;
+                totalSection.style.display = "block";
+            } else {
+                totalSection.style.display = "none";
+            }
+        } else {
+            renderTable(db);
+            totalSection.style.display = "none";
+        }
+    }
+
+    function clearSearch() {
+        document.getElementById('searchInput').value = "";
+        document.getElementById('totalSection').style.display = "none";
+        renderTable(db);
+    }
+
+    function deleteRecord(id) {
+        if (confirm("Are you sure you want to delete this?")) {
+            db = db.filter(item => item.id !== id);
+            localStorage.setItem('mobileDB', JSON.stringify(db));
+            handleSearch();
+        }
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = "";
+
+        data.forEach(item => {
+            const row = `<tr>
+                <td>${item.phone}</td>
+                <td>₹${item.amount}</td>
+                <td><button class="btn-delete" onclick="deleteRecord(${item.id})">Delete</button></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function exportToCSV() {
+        if (db.length === 0) {
+            alert("No data to export!");
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,Phone Number,Amount\n";
+        db.forEach(item => {
+            csvContent += `${item.phone},${item.amount}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "mobile_records.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>

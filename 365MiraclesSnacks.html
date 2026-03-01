@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Simple Purchases (No-Server)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    :root {
+      --bg: #ffffff;
+      --card: #ed9519;
+      --text: #0a0a0a;
+      --muted: #ffffff;
+      --accent: #3ddc97;
+      --danger: #ff6b6b;
+      --yellow: #ffd166;
+      --font: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    body {
+      margin: 0; background: var(--bg); color: var(--text); font-family: var(--font);
+    }
+    .wrap {
+      max-width: 880px; margin: 24px auto; padding: 16px;
+    }
+    .card {
+      background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+      margin-bottom: 16px;
+    }
+    h1, h2 { margin: 0 0 12px 0; }
+    h1 { font-size: 28px; display: flex; justify-content: space-between; align-items: center; }
+    h2 { font-size: 22px; color: var(--yellow); }
+    label { display: block; margin: 8px 0 6px; font-size: 18px; }
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%; font-size: 18px; padding: 14px 16px; border-radius: 10px; border: 2px solid #ddd; background:#ffffff; color: #000;
+      outline: none; min-height: 50px;
+    }
+    input[type="text"]::placeholder, input[type="number"]::placeholder { color: #6f7b87; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .row input { flex: 1; }
+    .row .btn { flex-shrink: 0; white-space: nowrap; min-width: 100px; }
+    .search-row { display: flex; gap: 10px; align-items: center; }
+    .search-row input { flex: 1; }
+    .search-row .btn-clear { flex-shrink: 0; padding: 14px 18px; font-size: 18px; min-height: 50px; }
+    .btn-icon {
+      background: #000000; border: 2px solid #000000; cursor: pointer; font-size: 16px;
+      padding: 10px 16px; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-icon:hover { background: #333333; border-color: #333333; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+    .btn {
+      font-size: 18px; padding: 14px 20px; border: 2px solid #000000; border-radius: 10px; cursor: pointer; color: #ffffff;
+      background: #000000; min-height: 50px; font-weight: 600; transition: all 0.2s;
+    }
+    .btn:hover:not(:disabled) { background: #333333; border-color: #333333; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-outline { background: #ffffff; color: #000000; border: 2px solid #000000; transition: all 0.2s; }
+    .btn-outline:hover { background: #f0f0f0; }
+    .btn-danger { background: #000000; color: #ffffff; border: 2px solid #000000; transition: all 0.2s; }
+    .btn-danger:hover { background: #ff0000; border-color: #ff0000; }
+    .help { color: var(--muted); font-size: 14px; margin-top: 8px; }
+    .list { margin-top: 10px; }
+    .month-group { margin-bottom: 12px; background: #f8f9fa; border-radius: 8px; overflow: hidden; }
+    .month-header {
+      display: flex; justify-content: space-between; align-items: center; padding: 12px 14px;
+      background: #e9ecef; cursor: pointer; font-weight: 600; font-size: 16px; color: #000;
+      border: 2px solid #dee2e6; border-radius: 8px;
+    }
+    .month-header:hover { background: #dee2e6; }
+    .month-header .expand-icon { font-size: 14px; transition: transform 0.2s; }
+    .month-header.expanded .expand-icon { transform: rotate(90deg); }
+    .month-content { display: none; padding: 8px; }
+    .month-content.expanded { display: block; }
+    .week-group { margin-bottom: 8px; }
+    .week-header {
+      display: flex; justify-content: space-between; align-items: center; padding: 8px 12px;
+      background: #ffffff; cursor: pointer; font-weight: 500; font-size: 14px; color: #495057;
+      border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 4px;
+    }
+    .week-header:hover { background: #f8f9fa; }
+    .week-header .expand-icon { font-size: 12px; transition: transform 0.2s; }
+    .week-header.expanded .expand-icon { transform: rotate(90deg); }
+    .week-content { display: none; padding-left: 8px; }
+    .week-content.expanded { display: block; }
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 10px 12px; background: #ffffff; border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 4px;
+      font-size: 14px; color: #000;
+    }
+    .list-item-date { color: #666; font-size: 13px; flex: 1; }
+    .list-item-mobile { color: #666; font-size: 13px; }
+    .list-item-amount { font-weight: 600; color: #000; font-size: 15px; }
+    .list-item .btn-danger { padding: 8px 12px; font-size: 14px; min-height: 36px; }
+    .total-row { font-weight: 600; background: #f0f0f0; border: 2px solid #ccc; margin-bottom: 12px; }
+    .delete-popup {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;
+    }
+    .delete-popup.show { display: flex; }
+    .delete-popup-content {
+      background: #fff; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .delete-popup-content h3 { margin: 0 0 12px 0; color: #000; }
+    .delete-popup-content p { margin: 0 0 20px 0; color: #666; }
+    .delete-popup-buttons { display: flex; gap: 10px; justify-content: flex-end; }
+    .history-card { background: #ffffff !important; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .week-summary { display: flex; gap: 10px; font-size: 16px; }
+    .week-badge {
+      padding: 10px 16px; border-radius: 8px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; font-size: 15px;
+      border: 2px solid;
+    }
+    .week-badge.current { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+    .week-badge.last { background: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
+    .week-badge-label { font-size: 14px; opacity: 0.9; }
+    .week-badge-amount { font-weight: 700; font-size: 16px; }
+    .suggestions { margin-top: 8px; }
+    .sugg {
+      display:inline-block; padding: 12px 16px; margin: 6px 6px 0 0; border-radius: 10px; background:#ffffff; color: #000; border:2px solid #ddd; cursor:pointer; font-size:18px; min-height: 50px; font-weight: 500;
+    }
+    .sugg:hover { background: #f0f0f0; border-color: #aaa; }
+    .auth { max-width: 420px; margin: 10vh auto; }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      .wrap {
+        margin: 12px auto;
+        padding: 12px;
+      }
+      .card {
+        padding: 16px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+      }
+      h1 { font-size: 24px; }
+      h2 { font-size: 20px; }
+      label { font-size: 16px; margin: 6px 0 4px; }
+      input[type="text"], input[type="number"], input[type="password"] {
+        font-size: 17px;
+        padding: 14px;
+        min-height: 52px;
+      }
+      .btn {
+        font-size: 17px;
+        padding: 14px 18px;
+        min-height: 52px;
+      }
+      .row {
+        gap: 8px;
+      }
+      .row .btn { padding: 14px; font-size: 16px; min-height: 52px; }
+      .month-header { font-size: 15px; padding: 10px 12px; }
+      .week-header { font-size: 13px; padding: 8px 10px; }
+      .history-header { flex-direction: column; align-items: flex-start; }
+      .week-summary { width: 100%; }
+      .week-badge { flex: 1; font-size: 14px; padding: 8px 12px; }
+      .week-badge-label { font-size: 13px; }
+      .week-badge-amount { font-size: 15px; }
+      .list-item {
+        gap: 8px;
+        padding: 12px;
+        font-size: 15px;
+      }
+      .list-item-date { font-size: 14px; }
+      .list-item-amount { font-size: 16px; }
+      .list-item .btn-danger { padding: 10px 12px; font-size: 15px; min-height: 42px; }
+      .sugg {
+        font-size: 16px;
+        padding: 10px 14px;
+        margin: 4px 4px 0 0;
+      }
+      .auth {
+        margin: 5vh auto;
+        padding: 16px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .wrap {
+        margin: 8px auto;
+        padding: 8px;
+      }
+      .card {
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+      }
+      h1 { font-size: 22px; margin-bottom: 10px; }
+      h2 { font-size: 18px; }
+      label { font-size: 15px; }
+      input[type="text"], input[type="number"], input[type="password"] {
+        font-size: 16px;
+        padding: 14px;
+        min-height: 52px;
+      }
+      .btn {
+        font-size: 16px;
+        padding: 14px;
+        min-height: 52px; /* Touch-friendly */
+      }
+      .month-header { font-size: 14px; padding: 10px; }
+      .week-header { font-size: 13px; padding: 8px; }
+      .week-badge { font-size: 13px; padding: 6px 10px; }
+      .week-badge-label { font-size: 12px; }
+      .week-badge-amount { font-size: 14px; }
+      .list-item {
+        font-size: 14px;
+        padding: 10px 12px;
+      }
+      .list-item-date { font-size: 13px; }
+      .list-item-amount { font-size: 15px; }
+      .help { font-size: 13px; }
+      .sugg {
+        font-size: 16px;
+        padding: 14px 16px;
+        min-height: 52px;
+        display: inline-flex;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="authCard" class="card auth" style="display:none">
+    <h1>Welcome</h1>
+    <label>Username</label>
+    <input id="authUser" type="text" placeholder="e.g., admin" />
+    <label>Password</label>
+    <input id="authPass" type="password" placeholder="••••" />
+    <div style="margin-top:12px; display:flex; gap:10px;">
+      <button id="authBtn" class="btn">Continue</button>
+    </div>
+    <p id="authMsg" class="help" style="color:#ffb4b4;"></p>
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="card">
+      <h1>
+        <span>365 Miracles Snacks</span>
+        <button id="exportBtn" class="btn-icon" title="Export CSV">Export</button>
+      </h1>
+    </div>
+
+    <div class="card">
+      <label>Search Mobile</label>
+      <div class="search-row">
+        <input id="mobileInput" type="text" inputmode="numeric" maxlength="10" placeholder="Type 3+ digits…" />
+        <button id="clearSearchBtn" class="btn btn-clear">✕</button>
+      </div>
+      <div id="suggestions" class="suggestions"></div>
+    </div>
+
+    <div class="card">
+      <label>Add Amount (₹)</label>
+      <div class="row">
+        <input id="amountInput" type="number" min="0" step="1" placeholder="e.g., 250" />
+        <button id="addBtn" class="btn" disabled>Add</button>
+      </div>
+    </div>
+
+    <div class="card history-card">
+      <div class="history-header">
+        <h2 style="color: #000; margin: 0;">Purchase History</h2>
+        <div class="week-summary">
+          <div class="week-badge current">
+            <span class="week-badge-label">This Week:</span>
+            <span class="week-badge-amount" id="currentWeekTotal">₹0</span>
+          </div>
+          <div class="week-badge last">
+            <span class="week-badge-label">Last Week:</span>
+            <span class="week-badge-amount" id="lastWeekTotal">₹0</span>
+          </div>
+        </div>
+      </div>
+      <div class="list" id="list"></div>
+    </div>
+
+    <!-- Delete Confirmation Popup -->
+    <div id="deletePopup" class="delete-popup">
+      <div class="delete-popup-content">
+        <h3>Delete Purchase</h3>
+        <p>Are you sure you want to delete this purchase?</p>
+        <div class="delete-popup-buttons">
+          <button id="cancelDelete" class="btn btn-outline">Cancel</button>
+          <button id="confirmDelete" class="btn btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  const CURRENCY = "₹";
+
+  // Authentication
+  // Default username/password stored in client (checked once and stored in localStorage)
+  const DEFAULT_AUTH = { user: "admin", pass: "1234" };
+  const AUTH_KEY = "simpleapp.auth.ok.v1";
+
+  const authCard = document.getElementById("authCard");
+  const appEl = document.getElementById("app");
+  const authUser = document.getElementById("authUser");
+  const authPass = document.getElementById("authPass");
+  const authBtn  = document.getElementById("authBtn");
+  const authMsg  = document.getElementById("authMsg");
+
+  function showApp() {
+    authCard.style.display = "none";
+    appEl.style.display = "block";
+  }
+  function showAuth() {
+    authCard.style.display = "block";
+    appEl.style.display = "none";
+  }
+  function checkAuth() {
+    if (localStorage.getItem(AUTH_KEY) === "yes") showApp(); else showAuth();
+  }
+  authBtn.addEventListener("click", () => {
+    const u = (authUser.value || "").trim();
+    const p = (authPass.value || "").trim();
+    if (u === DEFAULT_AUTH.user && p === DEFAULT_AUTH.pass) {
+      localStorage.setItem(AUTH_KEY, "yes");
+      showApp();
+    } else {
+      authMsg.textContent = "Wrong username or password. Try again.";
+    }
+  });
+  checkAuth();
+
+  // Firebase Initialization
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, deleteDoc, doc,
+    query, where, orderBy, startAt, endAt, getDocs, serverTimestamp, limit, Timestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC9Sn4E9UrhnYOl-XOZvBy58ETRh43fC9o",
+  authDomain: "snacks-1fbf4.firebaseapp.com",
+  projectId: "snacks-1fbf4",
+  storageBucket: "snacks-1fbf4.firebasestorage.app",
+  messagingSenderId: "393764006148",
+  appId: "1:393764006148:web:707ce5af9f50b9af808851"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const purchasesCol = collection(db, "purchases");
+
+  // UI elements
+  const mobileInput  = document.getElementById("mobileInput");
+  const amountInput  = document.getElementById("amountInput");
+  const addBtn       = document.getElementById("addBtn");
+  const listEl       = document.getElementById("list");
+  const exportBtn    = document.getElementById("exportBtn");
+  const suggestions  = document.getElementById("suggestions");
+  const clearSearchBtn = document.getElementById("clearSearchBtn");
+  const deletePopup = document.getElementById("deletePopup");
+  const confirmDeleteBtn = document.getElementById("confirmDelete");
+  const cancelDeleteBtn = document.getElementById("cancelDelete");
+  const currentWeekTotalEl = document.getElementById("currentWeekTotal");
+  const lastWeekTotalEl = document.getElementById("lastWeekTotal");
+
+  let currentMobile = "";
+  let deleteItemId = null;
+
+  const fmt = (n) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
+  const isValidMobile = (s) => /^[0-9]{10}$/.test(s);
+
+  function updateAddBtnState() {
+    addBtn.disabled = !isValidMobile((mobileInput.value || "").trim());
+  }
+
+  function setCurrentMobile(m) {
+    currentMobile = m;
+    refreshListAndSummary();
+    updateAddBtnState();
+  }
+
+  // Type-ahead suggestions (after 3 digits)
+  async function refreshSuggestions(prefix) {
+    suggestions.innerHTML = "";
+    if (!prefix || prefix.length < 3) return;
+
+    const q1 = query(purchasesCol, orderBy("mobile"), startAt(prefix), endAt(prefix + "\uf8ff"), limit(50));
+    const snap = await getDocs(q1);
+    const uniques = new Set();
+    snap.forEach(d => uniques.add(d.data().mobile));
+    Array.from(uniques).slice(0,12).forEach(m => {
+      const el = document.createElement("button");
+      el.className = "sugg";
+      el.textContent = m;
+      el.onclick = () => { mobileInput.value = m; setCurrentMobile(m); };
+      suggestions.appendChild(el);
+    });
+  }
+
+  // Load list and summary
+  async function refreshListAndSummary() {
+    let q2;
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const threeMonthsTimestamp = Timestamp.fromDate(threeMonthsAgo);
+    
+    if (isValidMobile(currentMobile)) {
+      // Get all purchases for that mobile
+      q2 = query(purchasesCol, where("mobile", "==", currentMobile), orderBy("createdAt", "desc"));
+    } else {
+      // Get last 3 months purchases only
+      q2 = query(purchasesCol, where("createdAt", ">=", threeMonthsTimestamp), orderBy("createdAt", "desc"));
+    }
+    
+    const snap = await getDocs(q2);
+    let allTotal = 0;
+    let allCount = 0;
+    
+    // Calculate current week and last week boundaries
+    const now = new Date();
+    const currentDayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+    const currentWeekStart = new Date(now);
+    currentWeekStart.setDate(now.getDate() - currentDayOfWeek);
+    currentWeekStart.setHours(0, 0, 0, 0);
+    
+    const lastWeekStart = new Date(currentWeekStart);
+    lastWeekStart.setDate(currentWeekStart.getDate() - 7);
+    
+    const lastWeekEnd = new Date(currentWeekStart);
+    lastWeekEnd.setSeconds(-1); // End of last week
+    
+    // Special groups for current/last week
+    const currentWeekItems = [];
+    const lastWeekItems = [];
+    let currentWeekTotal = 0;
+    let lastWeekTotal = 0;
+    
+    // Group by month and week
+    const monthGroups = {};
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      const amt = Number(d.amount || 0);
+      const date = d.createdAt?.toDate?.() || new Date(0);
+      
+      const item = {
+        id: docSnap.id,
+        mobile: d.mobile || "",
+        amount: amt,
+        createdAt: date
+      };
+      
+      // Check if in current week or last week
+      if (date >= currentWeekStart) {
+        currentWeekItems.push(item);
+        currentWeekTotal += amt;
+      } else if (date >= lastWeekStart && date <= lastWeekEnd) {
+        lastWeekItems.push(item);
+        lastWeekTotal += amt;
+      }
+      
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = date.toLocaleDateString('en-IN', { year: 'numeric', month: 'long' });
+      
+      // Get week of month (1-5)
+      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+      const weekNum = Math.ceil((date.getDate() + firstDay.getDay()) / 7);
+      const weekKey = `${monthKey}-W${weekNum}`;
+      const weekLabel = `Week ${weekNum}`;
+      
+      if (!monthGroups[monthKey]) {
+        monthGroups[monthKey] = {
+          label: monthLabel,
+          total: 0,
+          weeks: {}
+        };
+      }
+      
+      if (!monthGroups[monthKey].weeks[weekKey]) {
+        monthGroups[monthKey].weeks[weekKey] = {
+          label: weekLabel,
+          total: 0,
+          items: []
+        };
+      }
+      
+      monthGroups[monthKey].total += amt;
+      monthGroups[monthKey].weeks[weekKey].total += amt;
+      monthGroups[monthKey].weeks[weekKey].items.push(item);
+      
+      allTotal += amt;
+      allCount++;
+    });
+    
+    // Build HTML
+    let html = '';
+    
+    // Total row
+    if (allCount > 0) {
+      const titleText = isValidMobile(currentMobile) ? `Total (${currentMobile})` : 'Total (All)';
+      html += `
+        <div class="list-item total-row">
+          <span>${titleText}</span>
+          <span style="color: #000;">${fmt(allTotal)}</span>
+          <span>${allCount} items</span>
+        </div>
+      `;
+    }
+    
+    // Month groups
+    Object.keys(monthGroups).sort().reverse().forEach((monthKey, monthIdx) => {
+      const month = monthGroups[monthKey];
+      html += `
+        <div class="month-group">
+          <div class="month-header" data-month="${monthKey}">
+            <span><span class="expand-icon">▶</span> ${month.label}</span>
+            <span>${fmt(month.total)}</span>
+          </div>
+          <div class="month-content" data-month-content="${monthKey}">
+      `;
+      
+      // Week groups
+      Object.keys(month.weeks).sort().reverse().forEach(weekKey => {
+        const week = month.weeks[weekKey];
+        html += `
+          <div class="week-group">
+            <div class="week-header" data-week="${weekKey}">
+              <span><span class="expand-icon">▶</span> ${week.label}</span>
+              <span>${fmt(week.total)}</span>
+            </div>
+            <div class="week-content" data-week-content="${weekKey}">
+        `;
+        
+        // Items
+        week.items.forEach(item => {
+          const date = item.createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+          const time = item.createdAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+          const showMobile = !isValidMobile(currentMobile);
+          
+          html += `
+            <div class="list-item">
+              ${showMobile ? `<span class="list-item-mobile">${item.mobile}</span>` : ''}
+              <span class="list-item-date">${date} ${time}</span>
+              <span class="list-item-amount">${fmt(item.amount)}</span>
+              <button class="btn btn-danger" data-del="${item.id}">✕</button>
+            </div>
+          `;
+        });
+        
+        html += `
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `
+          </div>
+        </div>
+      `;
+    });
+    
+    listEl.innerHTML = html;
+    
+    // Update week summary badges
+    currentWeekTotalEl.textContent = fmt(currentWeekTotal);
+    lastWeekTotalEl.textContent = fmt(lastWeekTotal);
+    
+    // Wire month/week toggle buttons
+    listEl.querySelectorAll('.month-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const monthKey = header.getAttribute('data-month');
+        const content = listEl.querySelector(`[data-month-content="${monthKey}"]`);
+        header.classList.toggle('expanded');
+        content.classList.toggle('expanded');
+      });
+    });
+    
+    listEl.querySelectorAll('.week-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const weekKey = header.getAttribute('data-week');
+        const content = listEl.querySelector(`[data-week-content="${weekKey}"]`);
+        header.classList.toggle('expanded');
+        content.classList.toggle('expanded');
+      });
+    });
+    
+    // Wire delete buttons
+    listEl.querySelectorAll("[data-del]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        deleteItemId = btn.getAttribute("data-del");
+        deletePopup.classList.add('show');
+      });
+    });
+  }
+  
+  // Delete popup handlers
+  confirmDeleteBtn.addEventListener("click", async () => {
+    if (deleteItemId) {
+      await deleteDoc(doc(db, "purchases", deleteItemId));
+      deletePopup.classList.remove('show');
+      deleteItemId = null;
+      refreshListAndSummary();
+      if (currentMobile && currentMobile.length >= 3) refreshSuggestions(currentMobile);
+    }
+  });
+  
+  cancelDeleteBtn.addEventListener("click", () => {
+    deletePopup.classList.remove('show');
+    deleteItemId = null;
+  });
+  
+  // Close popup on background click
+  deletePopup.addEventListener("click", (e) => {
+    if (e.target === deletePopup) {
+      deletePopup.classList.remove('show');
+      deleteItemId = null;
+    }
+  });
+
+  // Add purchase
+  addBtn.addEventListener("click", async () => {
+    const m = (mobileInput.value || "").trim();
+    const amt = Number((amountInput.value || "").trim());
+
+    if (!isValidMobile(m)) { alert("Enter a valid 10-digit mobile."); return; }
+    if (!(amt > 0))       { alert("Enter amount in ₹ (greater than 0)."); return; }
+
+    addBtn.disabled = true;
+    try {
+      await addDoc(purchasesCol, {
+        mobile: m,
+        amount: amt,
+        createdAt: serverTimestamp()
+      });
+      amountInput.value = "";
+      setCurrentMobile(m);
+      refreshSuggestions(m);
+    } catch(e) {
+      console.error("Add failed:", e);
+    } finally { 
+      addBtn.disabled = false;
+    }
+  });
+
+  // Clear search
+  clearSearchBtn.addEventListener("click", () => {
+    mobileInput.value = "";
+    suggestions.innerHTML = "";
+    setCurrentMobile("");
+  });
+
+  // Export to CSV
+  exportBtn.addEventListener("click", async () => {
+    const all = await getDocs(query(purchasesCol, orderBy("createdAt","desc")));
+    const rows = [["mobile","amount","createdAt"]];
+    all.forEach(d => {
+      const x = d.data();
+      const t = x.createdAt?.toDate?.() || new Date(0);
+      rows.push([x.mobile || "", String(x.amount ?? ""), t.toISOString()]);
+    });
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = "purchases.csv"; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Live typing handler
+  mobileInput.addEventListener("input", async () => {
+    const v = mobileInput.value.replace(/\D/g,"").slice(0,10);
+    mobileInput.value = v;
+    if (v.length >= 3) refreshSuggestions(v);
+    if (v.length === 10) setCurrentMobile(v);
+    else if (v.length === 0) setCurrentMobile("");
+    else updateAddBtnState();
+  });
+
+  setCurrentMobile("");
+</script>
+</body>
+</html>
